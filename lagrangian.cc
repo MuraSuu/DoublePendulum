@@ -30,7 +30,7 @@ int Func(double t, const double y[], double dydt[], void* params)
 int main()
 {
     //M, L, m, l, g
-    double param[5] = {1.0, 2.0, 4.0, 0.5, 4.0};
+    double param[5] = {2.0, 2.0, 0.05, 0.01, 9.8};
     gsl_odeiv2_system system{Func, nullptr, 4, param};
     gsl_odeiv2_driver* driver = gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
     
@@ -39,7 +39,8 @@ int main()
     //double y[4] = {0.0, 0.0, 3.14159/6, 0.0};
     //double y[4] = {3.14159/4, 0.0, 3.14159/4, 0.0};
     //double y[4] = {0.0, 0.0, 3.14159/2, 0.0};
-    double y[4] = {3.14159, 0.0, 3.14159, 0.0};
+    //double y[4] = {3.14159, 0.0, 3.14159, 0.0};
+    double y[4] = {3.14159/2, 0.0, 0.0, 0.0};
     
     for(int i = 1; i <= 360; ++i) //Run from t=0 to t=6 minutes(360 seconds).
     {

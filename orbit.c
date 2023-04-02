@@ -41,14 +41,15 @@ int main(void)
 {
     //M,L,m,l,g
     double param[5] = {1.0, 1.0, 0.1, 1.0, 1.0};
+    double L = param[1], l = param[3];
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
-            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
+            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-8, 1e-8, 0.0);
     double t = 0.0, t1 = 1.0;
     
     double y[4] = {3.14159/6, 3.14159/2, 0.0, 0.0};
     
-    for(int i = 1; i <= 1000000; ++i)
+    for(int i = 1; i <= 1000000; ++i) //180 seconds (3 minutes).
     {
         for(int j = 0; j < 4; ++j)
             y[j] = fmod(y[j], 2*M_PI);
@@ -61,9 +62,14 @@ int main(void)
             break;
         }
         
+        double x1 =  L*Sin(y[0]);
+        double y1 = -L*Cos(y[0]);
+        double x2 =  L*Sin(y[0]) + l*Sin(y[1]);
+        double y2 = -L*Cos(y[0]) - l*Cos(y[1]);
+        
         /*Here we have time, angle of the first rod, momentum of the first rod
           angle of the second rod and momentum of the second rod.*/
-        printf("%.5e %.5e %.5e %.5e %.5e\n", t, y[0], y[1], y[2], y[3]);
+        printf("%.5e %.5e %.5e %.5e\n", x1, y1, x2, y2);
     }
     
     gsl_odeiv2_driver_free(driver);

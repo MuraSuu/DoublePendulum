@@ -41,6 +41,7 @@ int main(void)
 {
     //M,L,m,l,g
     double param[5] = {1.0, 1.0, 0.1, 1.0, 1.0};
+    double M = param[0], L = param[1], m = param[2], l = param[3], g = param[4];
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
             gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
@@ -48,11 +49,17 @@ int main(void)
     
     double y[4] = {3.14159/6, 3.14159/2, 0.0, 0.0};
     
+    double prev_y[4];
+    double section_width = 0.1; //For phi = 0.
+    
     for(int i = 1; i <= 1000000; ++i)
     {
         for(int j = 0; j < 4; ++j)
+        {
             y[j] = fmod(y[j], 2*M_PI);
-    
+            prev_y[j] = y[j];
+        }
+        
         double ti = i*t1/100.0;
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);
         if(status != GSL_SUCCESS)
@@ -61,9 +68,17 @@ int main(void)
             break;
         }
         
-        /*Here we have time, angle of the first rod, momentum of the first rod
-          angle of the second rod and momentum of the second rod.*/
-        printf("%.5e %.5e %.5e %.5e %.5e\n", t, y[0], y[1], y[2], y[3]);
+        double del = y[0] - y[1];
+        double theta_dot = (l*y[2]-L*y[3]*Cos(del))/(l*L*L*(M+m*Sin(del)*Sin(del)));
+        
+        //Check if crossed the section.
+        if((y[1] - section_width)*(prev_y[1] - section_width) < 0 && theta_dot > 0.1)
+        {
+            double data[4];
+            for(int j = 0; j < 4; ++j)
+                data[j] = prev_y[j] + (y[j]-prev_y[j])*(section_width - prev_y[1])/(y[1]-prev_y[1]);
+            printf("%.5e %.5e\n", data[0], data[2]);
+        }
     }
     
     gsl_odeiv2_driver_free(driver);

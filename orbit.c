@@ -47,12 +47,12 @@ int main(void)
             gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-8, 1e-8, 0.0);
     double t = 0.0, t1 = 1.0;
     
-    double y[4] = {3.14159/6, 3.14159/2, 0.0, 0.0};
+    double y[4] = {3.14159/4, 0.0, 0.0, 0.5};
     
     for(int i = 1; i <= 1000000; ++i) //180 seconds (3 minutes).
     {
-        for(int j = 0; j < 4; ++j)
-            y[j] = fmod(y[j], 2*M_PI);
+        y[0] = fmod(y[0], 2*M_PI); //Theta.
+        y[1] = fmod(y[1], 2*M_PI); //Phi.
     
         double ti = i*t1/100.0;
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);

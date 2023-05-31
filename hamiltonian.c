@@ -24,15 +24,15 @@ int Func(double t, const double y[], double dydt[], void* params)
     double M = temp[0], L = temp[1], m = temp[2], l = temp[3], g = temp[4];
     double del = y[0] - y[1];
     
-    dydt[0] = (l*y[2]-L*y[3]*Cos(del))/(l*L*L*(M+m*Sin(del)*Sin(del)));
-    dydt[1] = ((m+M)*L*y[3] - m*l*y[2]*Cos(del))/(m*L*l*l*(M+m*Sin(del)*Sin(del)));
+    double denom = m*Cos(del)*Cos(del) - m - M;
+    dydt[0] = (l*y[2]-y[3]*L*Cos(del))/(l*L*L*denom);
+    dydt[1] = ((M+m)*l*y[3]-l*m*y[2]*Cos(del))/(l*l*L*m*denom);
     
-    double T1 = (y[2]*y[3]*Sin(del))/(l*L*(M+m*Sin(del)*Sin(del)));
-    double T2 = ((m*l*l*y[2]*y[2]+(M+m)*L*L*y[3]*y[3]-2*m*l*L*y[2]*y[3]*Cos(del))*Sin(2*del))/
-                (2*l*l*L*L*(M+m*Sin(del)*Sin(del))*(M+m*Sin(del)*Sin(del)));
-    //The error was right here. sin of theta, not of theta-phi.
-    dydt[2] = T2 - T1 - (M+m)*g*L*Sin(y[0]);
-    dydt[3] = T1 - T2 - m*g*l*Sin(y[1]);
+    double T1 = (y[2]*y[3]*Sin(del))/(L*l*denom);
+    double T2 = ((L*L*y[3]*y[3]*(M+m)+m*l*l*y[2]*y[2]-2*m*l*L*y[2]*y[3]*Cos(del))*Sin(2*del))/(2*l*l*L*L*denom*denom);
+    
+    dydt[2] = -T1 - T2 - L*g*(M+m)*Sin(y[0]);
+    dydt[3] = T1 + T2 - g*l*m*Sin(y[1]);
     
     return GSL_SUCCESS;
 }
@@ -40,20 +40,29 @@ int Func(double t, const double y[], double dydt[], void* params)
 int main(void)
 {
     //M,L,m,l,g
-    double param[5] = {1.0, 1.0, 0.1, 1.0, 1.0};
+    double param[5] = {1.0, 1.0, 1.0, 1.0, 1.0};
+    double M = param[0], L = param[1], m = param[2], l = param[3], g = param[4];
+    
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
             gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
-    double t = 0.0, t1 = 1.0;
+    double t = 0.0, prev_t = 0.0;
+    const double t_step_size = 0.01;
     
-    double y[4] = {3.14159/4, 0.0, 0.0, 0.5};
+    //Initial conditions.
+    double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
+    const double E = 2.0;
     
-    for(int i = 1; i <= 1000000; ++i)
+    //Calculate new pφ based on choice of E.
+    y[3] = (m*l*y[2]*Cos(y[0])+l*sqrt(m*m*y[2]*y[2]*Cos(y[0])*Cos(y[0])-m*(M+m)*
+    (y[2]*y[2]-2*L*L*(M+m*Sin(y[0])*Sin(y[0]))*(E+(M+m)*g*L*Cos(y[0])+m*g*l))))/((M+m)*L);
+    
+    for(int i = 1; i <= 100000; ++i)
     {
         y[0] = fmod(y[0], 2*M_PI); //Theta.
         y[1] = fmod(y[1], 2*M_PI); //Phi.
     
-        double ti = i*t1/100.0;
+        double ti = i*t_step_size; //Current time.
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);
         if(status != GSL_SUCCESS)
         {

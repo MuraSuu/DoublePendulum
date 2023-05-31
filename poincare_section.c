@@ -5,16 +5,19 @@
 
 //C
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 
 #define Sin gsl_sf_sin
 #define Cos gsl_sf_cos
 
 /*
-y0 = theta
-y1 = phi
-y2 = p_theta
-y3 = p_phi
+φ
+
+y0 = θ
+y1 = φ
+y2 = p_θ
+y3 = p_φ
 */
 
 int Func(double t, const double y[], double dydt[], void* params)
@@ -36,17 +39,6 @@ int Func(double t, const double y[], double dydt[], void* params)
     return GSL_SUCCESS;
 }
 
-//Helper function.
-void Swap(double* a, double* b)
-{
-    if(*a > *b)
-    {
-        double c = *a;
-        *a = *b;
-        *b = c;
-    }
-}
-
 int main(void)
 {
     //M,L,m,l,g
@@ -56,24 +48,24 @@ int main(void)
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
             gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
-    double t = 0.0, t1 = 1.0, prev_t = 0.0;
+    double t = 0.0, prev_t = 0.0;
+    const double t_step_size = 0.01;
     
     //Initial conditions.
-    double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0};
-    double prev_y[4];
-    double E = 5.0, del = y[0] - y[1];
+    double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
+    const double E = 1.0;
     
     //Calculate new pφ based on choice of E.
     y[3] = (m*l*y[2]*Cos(y[0])+l*sqrt(m*m*y[2]*y[2]*Cos(y[0])*Cos(y[0])-m*(M+m)*
     (y[2]*y[2]-2*L*L*(M+m*Sin(y[0])*Sin(y[0]))*(E+(M+m)*g*L*Cos(y[0])+m*g*l))))/((M+m)*L);
     
     //Solve eq.
-    for(int i = 1; i <= 1000000; ++i)
+    for(int i = 1; i <= 500000; ++i)
     {
-        for(int i = 0; i < 4; ++i) prev_y[i] = y[i];
+        for(int k = 0; k < 4; ++k){ prev_y[k] = y[k]; }
         prev_t = t;
-    
-        double ti = i*t1/100.0; //Current time.
+        
+        double ti = i*t_step_size; //Current time.
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);
         if(status != GSL_SUCCESS)
         {
@@ -81,34 +73,52 @@ int main(void)
             break;
         }
         
-        //x (mod 2pi).
-        y[0] = fmod(y[0], 2*M_PI); //θ.
-        y[1] = fmod(y[1], 2*M_PI); //φ
-        
         double theta_dot = (l*y[2]-L*y[3]*Cos(del))/(l*L*L*(M+m*Sin(del)*Sin(del)));
         
         //Check if crossed the section.
         if(y[1]*prev_y[1] < 0 && theta_dot > 0)
         {
-            double delta_phi = y[1] - prev_y[1], delta_t = t - prev_t;
-            double delH_delp = delta_phi/delta_t; // This will be very close to the exact time.
+            double ya[4], yb[4], ta = prev_t, tb = t;
+            memcpy(ya, prev_y, sizeof(prev_y));
+            memcpy(yb, y, sizeof(y));
             
-            double t_new = ti - delta_t + prev_y[1]/delH_delp;
-            Swap(&prev_t, &t_new); //Necessary in order for the limits of integration to make sense.
-            
-            status = gsl_odeiv2_driver_apply(driver, &prev_t, t_new, prev_y);
-            if(status != GSL_SUCCESS)
+            double temp_y[4]; memcpy(temp_y, ya, sizeof(ya));
+            double temp_t = ta;
+            for(int i = 1; i <= 3; ++i)
             {
-                fprintf(stderr, "Error with return: %d\n", status);
-                break;
-            }else{
-                printf("%.5e %.5e\n", y[0], y[2]);
+                double phi_dot = ((m+M)*L*temp_y[3] - m*l*temp_y[2]*Cos(temp_y[0]-temp_y[1]))/(m*L*l*l*(M+m*Sin(temp_y[0]-temp_y[1])*Sin(temp_y[0]-temp_y[1])));
+                
+                double t_next = temp_t - temp_y[1]/phi_dot;
+                
+                //If a swap is necessary it will also be necessary to swap the data.
+                //For example, if y_temp(yb) is far ahead of the t_next point, then I will need to use the data
+                //from ya to integrate.
+                if(t_next < temp_t)
+                {
+                    temp_t = ta;
+                    memcpy(temp_y, ya, sizeof(ya));
+                }
+                
+                int status2 = gsl_odeiv2_driver_apply(driver, &temp_t, t_next, temp_y);
+                if(status2 != GSL_SUCCESS)
+                {
+                    fprintf(stderr, "Error with return: %d\n", status2);
+                    break;
+                }
+                
+                if(temp_y[1]*yb[1] > 0)
+                {
+                    tb = temp_t;
+                    memcpy(yb, temp_y, sizeof(temp_y));
+                }else{
+                    ta = temp_t;
+                    memcpy(ya, temp_y, sizeof(temp_y));
+                }
             }
+            
+            printf("%.5e %.5e\n", temp_y[0], temp_y[2]);
         }
-        
-        if(status != GSL_SUCCESS) break;
     }
-    printf("End\n");
     
     gsl_odeiv2_driver_free(driver);
     return 0;

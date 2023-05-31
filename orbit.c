@@ -40,21 +40,29 @@ int Func(double t, const double y[], double dydt[], void* params)
 int main(void)
 {
     //M,L,m,l,g
-    double param[5] = {1.0, 1.0, 0.1, 1.0, 1.0};
-    double L = param[1], l = param[3];
+    double param[5] = {1.0, 1.0, 1.0, 1.0, 1.0};
+    double M = param[0], L = param[1], m = param[2], l = param[3], g = param[4];
+    
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
-            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-8, 1e-8, 0.0);
-    double t = 0.0, t1 = 1.0;
+            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
+    double t = 0.0, prev_t = 0.0;
+    const double t_step_size = 0.01;
     
-    double y[4] = {3.14159/4, 0.0, 0.0, 0.5};
+    //Initial conditions.
+    double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
+    const double E = 2.0;
+    
+    //Calculate new pφ based on choice of E.
+    y[3] = (m*l*y[2]*Cos(y[0])+l*sqrt(m*m*y[2]*y[2]*Cos(y[0])*Cos(y[0])-m*(M+m)*
+    (y[2]*y[2]-2*L*L*(M+m*Sin(y[0])*Sin(y[0]))*(E+(M+m)*g*L*Cos(y[0])+m*g*l))))/((M+m)*L);
     
     for(int i = 1; i <= 1000000; ++i) //180 seconds (3 minutes).
     {
         y[0] = fmod(y[0], 2*M_PI); //Theta.
         y[1] = fmod(y[1], 2*M_PI); //Phi.
     
-        double ti = i*t1/100.0;
+        double ti = i*t_step_size; //Current time.
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);
         if(status != GSL_SUCCESS)
         {

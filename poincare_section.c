@@ -12,8 +12,6 @@
 #define Cos gsl_sf_cos
 
 /*
-φ
-
 y0 = θ
 y1 = φ
 y2 = p_θ
@@ -42,18 +40,18 @@ int Func(double t, const double y[], double dydt[], void* params)
 int main(void)
 {
     //M,L,m,l,g
-    double param[5] = {1.0, 1.0, 1.0, 1.0, 1.0};
+    double param[5] = {3.0, 2.0, 1.0, 1.0, 1.0};
     double M = param[0], L = param[1], m = param[2], l = param[3], g = param[4];
     
     gsl_odeiv2_system system = {Func, NULL, 4, param};
     gsl_odeiv2_driver* driver = 
-            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-6, 1e-6, 0.0);
+            gsl_odeiv2_driver_alloc_y_new(&system, gsl_odeiv2_step_rkf45, 1e-8, 1e-8, 0.0);
     double t = 0.0, prev_t = 0.0;
     const double t_step_size = 0.01;
     
     //Initial conditions.
     double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
-    const double E = 1.0;
+    const double E = -8.85;
     
     //Calculate new pφ based on choice of E.
     y[3] = (m*l*y[2]*Cos(y[0])+l*sqrt(m*m*y[2]*y[2]*Cos(y[0])*Cos(y[0])-m*(M+m)*
@@ -117,6 +115,7 @@ int main(void)
             }
             
             printf("%.5e %.5e\n", temp_y[0], temp_y[2]);
+            
         }
     }
     

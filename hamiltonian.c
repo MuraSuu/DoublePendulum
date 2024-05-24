@@ -24,15 +24,15 @@ int Func(double t, const double y[], double dydt[], void* params)
     double M = temp[0], L = temp[1], m = temp[2], l = temp[3], g = temp[4];
     double del = y[0] - y[1];
     
-    double denom = m*Cos(del)*Cos(del) - m - M;
+    double denom = m*Sin(del)*Sin(del)+M;
     dydt[0] = (l*y[2]-y[3]*L*Cos(del))/(l*L*L*denom);
     dydt[1] = ((M+m)*l*y[3]-l*m*y[2]*Cos(del))/(l*l*L*m*denom);
     
     double T1 = (y[2]*y[3]*Sin(del))/(L*l*denom);
     double T2 = ((L*L*y[3]*y[3]*(M+m)+m*l*l*y[2]*y[2]-2*m*l*L*y[2]*y[3]*Cos(del))*Sin(2*del))/(2*l*l*L*L*denom*denom);
     
-    dydt[2] = -T1 - T2 - L*g*(M+m)*Sin(y[0]);
-    dydt[3] = T1 + T2 - g*l*m*Sin(y[1]);
+    dydt[2] = T2 - T1 - L*g*(M+m)*Sin(y[0]);
+    dydt[3] = T1 - T2 - g*l*m*Sin(y[1]);
     
     return GSL_SUCCESS;
 }
@@ -50,18 +50,17 @@ int main(void)
     const double t_step_size = 0.01;
     
     //Initial conditions.
-    double y[4] = {M_PI/6.0, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
-    const double E = 2.0;
+    double y[4] = {M_PI/6, 0.0, 0.0, 0.0}, prev_y[4], del = y[0] - y[1];
+    const double E = -2.0;
     
     //Calculate new pφ based on choice of E.
     y[3] = (m*l*y[2]*Cos(y[0])+l*sqrt(m*m*y[2]*y[2]*Cos(y[0])*Cos(y[0])-m*(M+m)*
     (y[2]*y[2]-2*L*L*(M+m*Sin(y[0])*Sin(y[0]))*(E+(M+m)*g*L*Cos(y[0])+m*g*l))))/((M+m)*L);
     
+    //printf("%.5e \n", y[3]);
+    
     for(int i = 1; i <= 100000; ++i)
     {
-        y[0] = fmod(y[0], 2*M_PI); //Theta.
-        y[1] = fmod(y[1], 2*M_PI); //Phi.
-    
         double ti = i*t_step_size; //Current time.
         int status = gsl_odeiv2_driver_apply(driver, &t, ti, y);
         if(status != GSL_SUCCESS)
@@ -70,9 +69,13 @@ int main(void)
             break;
         }
         
+        double Et = (m*l*l*y[2]*y[2]+(m+M)*L*L*y[3]*y[3] - 2*m*l*L*y[2]*y[3]*Cos(y[0]-y[1]))/(2*m*l*l*L*L*(M+m*Sin(y[0]-y[1])*Sin(y[0]-y[1]))) 
+                -(m+M)*g*L*Cos(y[0]) - m*g*l*Cos(y[1]);
+        printf("%.5e\n", Et);
+        
         /*Here we have time, angle of the first rod, momentum of the first rod
-          angle of the second rod and momentum of the second rod.*/
-        printf("%.5e %.5e %.5e %.5e %.5e\n", t, y[0], y[1], y[2], y[3]);
+          angle of the second rod and momentum of the second rod.
+        printf("%.5e %.5e %.5e %.5e %.5e\n", t, y[0], y[1], y[2], y[3]); */
     }
     
     gsl_odeiv2_driver_free(driver);

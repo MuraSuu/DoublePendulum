@@ -31,7 +31,7 @@ int Func(double t, const double y[], double dydt[], void* params)
     double T1 = (y[2]*y[3]*Sin(del))/(l*L*(M+m*Sin(del)*Sin(del)));
     double T2 = ((m*l*l*y[2]*y[2]+(M+m)*L*L*y[3]*y[3]-2*m*l*L*y[2]*y[3]*Cos(del))*Sin(2*del))/
                 (2*l*l*L*L*(M+m*Sin(del)*Sin(del))*(M+m*Sin(del)*Sin(del)));
-    dydt[2] = T2 - T1 - (M+m)*g*L*Sin(y[0]); //The error was right here. sin(θ), not of θ-φ.
+    dydt[2] = T2 - T1 - (M+m)*g*L*Sin(y[0]); 
     dydt[3] = T1 - T2 - m*g*l*Sin(y[1]);
     
     return GSL_SUCCESS;
